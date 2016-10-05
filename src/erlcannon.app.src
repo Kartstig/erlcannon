@@ -1,5 +1,5 @@
 {application, erlcannon,
- [{description, "An OTP application"},
+ [{description, "A web benchmark tool"},
   {vsn, "0.1.0"},
   {registered, []},
   {mod, { erlcannon_app, []}},

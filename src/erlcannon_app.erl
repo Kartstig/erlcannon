@@ -2,7 +2,7 @@
 -behaviour(application).
 
 -export([start/2, stop/1]).
--export([request_generator/3, process_request/0]).
+-export([request_generator/4, process_request/0]).
 
 start(_StartType, _StartArgs) ->
   io:format("Started worker ~w~n", [self()]),
@@ -12,37 +12,38 @@ start(_StartType, _StartArgs) ->
   R2 = spawn(erlcannon_app, process_request, []),
   R3 = spawn(erlcannon_app, process_request, []),
   R4 = spawn(erlcannon_app, process_request, []),
-  spawn(erlcannon_app, request_generator, [start, 50, R1]),
-  spawn(erlcannon_app, request_generator, [start, 50, R2]),
-  spawn(erlcannon_app, request_generator, [start, 50, R3]),
-  spawn(erlcannon_app, request_generator, [start, 50, R4]),
+  spawn(erlcannon_app, request_generator, [start, 50, [], R1]),
+  spawn(erlcannon_app, request_generator, [start, 50, [], R2]),
+  spawn(erlcannon_app, request_generator, [start, 50, [], R3]),
+  spawn(erlcannon_app, request_generator, [start, 50, [], R4]),
   erlcannon_sup:start_link().
 
-request_generator(0, Initial, ProcessorPID) ->
-  io:format("Finished ~w Requests~n", [Initial]),
+request_generator(0, Initial, Res, ProcessorPID) ->
+  Min = lists:min(Res) / 1000,
+  Max = lists:max(Res) / 1000,
+  Avg = lists:sum(Res)/length(Res) / 1000,
+  io:format("Finished ~w Requests~nMin: ~wms~nMax: ~wms~nAverage: ~wms~n",
+    [Initial, Min, Max, Avg]),
   ProcessorPID ! finished;
-request_generator(start, Initial, ProcessorPID) ->
+request_generator(start, Initial, Res, ProcessorPID) ->
   ProcessorPID ! {"https://google.com", self()},
   receive
-    {done, Res} ->
-      io:format("Got Result: ~w~n", [Res])
-  end,
-  request_generator(Initial-1, Initial, ProcessorPID);
-request_generator(Rem, Initial, ProcessorPID) ->
-  ProcessorPID ! {"https://www.google.com/", self()},
+    {done, NewRes} ->
+      request_generator(Initial-1, Initial, Res ++ [NewRes], ProcessorPID)
+  end;
+request_generator(Rem, Initial, Res, ProcessorPID) ->
+  ProcessorPID ! {"https://google.com/", self()},
   receive
-    {done, Res} ->
-      io:format("Got Result: ~w~n", [Res])
-  end,
-  request_generator(Rem-1, Initial, ProcessorPID).
+    {done, NewRes} ->
+      request_generator(Rem-1, Initial, Res ++ [NewRes], ProcessorPID)
+  end.
 
 process_request() ->
   receive
     finished ->
-      io:format("Finished!~n");
+      io:format("~w Finished!~n", [self()]);
     {Dest, Origin} ->
-      io:format("Handling ~s~n", [Dest]),
-      {Time, {ok, {{_Version, 200, _ReasonPhrase}, _Headers, _Body}}} = timer:tc(httpc, request, [Dest]),
+      {Time, {ok, {{_Version, _200, _ReasonPhrase}, _Headers, _Body}}} = timer:tc(httpc, request, [Dest]),
       Origin ! {done, Time},
       process_request()
   end.
