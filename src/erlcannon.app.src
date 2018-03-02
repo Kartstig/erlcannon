@@ -2,7 +2,7 @@
  [{description, "A web benchmark tool"},
   {vsn, "0.1.0"},
   {registered, []},
-  {mod, { erlcannon_app, []}},
+  {mod, { erlcannon, []}},
   {applications,
    [kernel,
     stdlib,

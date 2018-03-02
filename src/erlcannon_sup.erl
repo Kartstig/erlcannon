@@ -7,7 +7,7 @@
 start_link() ->
   supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-init([]) ->
+init(_Args) ->
   io:format("Supervisor ~w~n", [self()]),
   Procs = [],
   {ok, {{one_for_all, 1, 100}, Procs} }.
